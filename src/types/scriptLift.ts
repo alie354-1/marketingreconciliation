@@ -35,6 +35,18 @@ export interface CampaignImpactConfig {
   timeToImpact: number; // in weeks
 }
 
+// UI preferences for script lift comparison
+export interface ScriptLiftPreferences {
+  comparisonType?: string;
+  timeframe?: {
+    daysBefore: number;
+    daysAfter: number;
+  };
+  selectedMedicationIds?: string[];
+  comparisonMedicationId?: string | null;
+  marketShareView?: 'charts' | 'table'; 
+}
+
 // Complete script lift configuration for a campaign
 export interface ScriptLiftConfig {
   campaignId: string;
@@ -46,6 +58,7 @@ export interface ScriptLiftConfig {
   createdAt: string;
   lastModified: string;
   notes?: string;
+  preferences?: ScriptLiftPreferences;
 }
 
 // Store structure for holding all script lift configs
