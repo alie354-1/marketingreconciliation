@@ -153,25 +153,23 @@ export function CampaignCreator() {
       setError(null);
       setLoading(true);
 
-      const [conditionsRes, medicationsRes, specialtiesRes, regionsRes, templatesRes] = await Promise.all([
+      const [conditionsRes, medicationsRes, specialtiesRes, regionsRes] = await Promise.all([
         supabase.from('conditions').select('*'),
         supabase.from('medications').select('*'),
         supabase.from('specialties').select('*'),
-        supabase.from('geographic_regions').select('id, name, type'),
-        supabase.from('creative_templates').select('*')
+        supabase.from('geographic_regions').select('id, name, type')
       ]);
     
       if (conditionsRes.error) throw conditionsRes.error;
       if (medicationsRes.error) throw medicationsRes.error;
       if (specialtiesRes.error) throw specialtiesRes.error;
       if (regionsRes.error) throw regionsRes.error;
-      if (templatesRes.error) throw templatesRes.error;
 
       setConditions(conditionsRes.data || []);
       setMedications(medicationsRes.data || []);
       setSpecialties(specialtiesRes.data || []);
       setGeographicRegions(regionsRes.data || []);
-      setTemplates(templatesRes.data || []);
+      setTemplates([]); // Set empty array as default
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch data';
       console.error('Error fetching reference data:', message);

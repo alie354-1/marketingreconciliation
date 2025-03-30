@@ -8,6 +8,8 @@ A healthcare marketing platform for targeting healthcare providers through their
 - **Analytics Dashboard**: Track campaign performance metrics
 - **Resource Management**: Browse and filter healthcare conditions, medications, and regions
 - **Database Explorer**: Direct access to the database for advanced queries
+- **Script Lift Analysis**: Track prescription changes before and after campaigns
+- **Creative Templates**: Manage email, banner, and video creative assets
 
 ## Technology Stack
 

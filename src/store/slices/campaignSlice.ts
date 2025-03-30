@@ -37,12 +37,27 @@ const initialState: CampaignState = {
 
 export const fetchCampaigns = createAsyncThunk(
   'campaigns/fetchCampaigns',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
     try {
-      const { data, error } = await supabase
+      // Get the current user from the auth state
+      const state = getState() as RootState;
+      const currentUser = state.auth.user;
+      
+      if (!currentUser) {
+        return rejectWithValue('User not authenticated');
+      }
+      
+      let query = supabase
         .from('campaigns')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // If user is not an admin, only show their campaigns
+      if (currentUser.role !== 'admin') {
+        query = query.eq('created_by', currentUser.id);
+      }
+      
+      const { data, error } = await query;
 
       if (error) {
         return rejectWithValue(error.message);
@@ -57,8 +72,16 @@ export const fetchCampaigns = createAsyncThunk(
 
 export const fetchCampaignById = createAsyncThunk(
   'campaigns/fetchCampaignById',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, getState }) => {
     try {
+      // Get the current user from the auth state
+      const state = getState() as RootState;
+      const currentUser = state.auth.user;
+      
+      if (!currentUser) {
+        return rejectWithValue('User not authenticated');
+      }
+      
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
@@ -68,8 +91,14 @@ export const fetchCampaignById = createAsyncThunk(
       if (error) {
         return rejectWithValue(error.message);
       }
+      
+      // Verify the user has permission to access this campaign
+      const campaign = data as Campaign;
+      if (currentUser.role !== 'admin' && campaign.created_by !== currentUser.id) {
+        return rejectWithValue('You do not have permission to view this campaign');
+      }
 
-      return data as Campaign;
+      return campaign;
     } catch (error) {
       return rejectWithValue('Failed to fetch campaign');
     }
@@ -78,8 +107,34 @@ export const fetchCampaignById = createAsyncThunk(
 
 export const fetchCampaignResults = createAsyncThunk(
   'campaigns/fetchCampaignResults',
-  async (campaignId: string, { rejectWithValue }) => {
+  async (campaignId: string, { rejectWithValue, getState }) => {
     try {
+      // Get the current user from the auth state
+      const state = getState() as RootState;
+      const currentUser = state.auth.user;
+      
+      if (!currentUser) {
+        return rejectWithValue('User not authenticated');
+      }
+      
+      // First, verify the user has permission to access this campaign
+      if (currentUser.role !== 'admin') {
+        const { data: campaignData, error: campaignError } = await supabase
+          .from('campaigns')
+          .select('created_by')
+          .eq('id', campaignId)
+          .single();
+          
+        if (campaignError) {
+          return rejectWithValue(campaignError.message);
+        }
+        
+        if (campaignData.created_by !== currentUser.id) {
+          return rejectWithValue('You do not have permission to view results for this campaign');
+        }
+      }
+      
+      // Now fetch the campaign results
       const { data, error } = await supabase
         .from('campaign_results')
         .select('*')
@@ -138,8 +193,16 @@ export const createCampaign = createAsyncThunk(
 
 export const updateCampaign = createAsyncThunk(
   'campaigns/updateCampaign',
-  async ({ id, updates }: { id: string; updates: Partial<Campaign> }, { rejectWithValue }) => {
+  async ({ id, updates }: { id: string; updates: Partial<Campaign> }, { rejectWithValue, getState }) => {
     try {
+      // Get the current user from the auth state
+      const state = getState() as RootState;
+      const currentUser = state.auth.user;
+      
+      if (!currentUser) {
+        return rejectWithValue('User not authenticated');
+      }
+      
       // If dates are being updated, make sure they are provided
       if ((updates.start_date !== undefined && !updates.start_date) || 
           (updates.end_date !== undefined && !updates.end_date)) {
@@ -158,6 +221,11 @@ export const updateCampaign = createAsyncThunk(
       }
       
       const existingCampaign = existingData as Campaign;
+      
+      // Verify the user has permission to update this campaign
+      if (currentUser.role !== 'admin' && existingCampaign.created_by !== currentUser.id) {
+        return rejectWithValue('You do not have permission to update this campaign');
+      }
       
       // Update the campaign
       const { data, error } = await supabase
@@ -198,8 +266,34 @@ export const updateCampaign = createAsyncThunk(
 
 export const deleteCampaign = createAsyncThunk(
   'campaigns/deleteCampaign',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, getState }) => {
     try {
+      // Get the current user from the auth state
+      const state = getState() as RootState;
+      const currentUser = state.auth.user;
+      
+      if (!currentUser) {
+        return rejectWithValue('User not authenticated');
+      }
+      
+      // First check if the user has permission to delete this campaign
+      if (currentUser.role !== 'admin') {
+        const { data: campaignData, error: campaignError } = await supabase
+          .from('campaigns')
+          .select('created_by')
+          .eq('id', id)
+          .single();
+          
+        if (campaignError) {
+          return rejectWithValue(campaignError.message);
+        }
+        
+        if (campaignData.created_by !== currentUser.id) {
+          return rejectWithValue('You do not have permission to delete this campaign');
+        }
+      }
+      
+      // Now perform the delete operation
       const { error } = await supabase
         .from('campaigns')
         .delete()

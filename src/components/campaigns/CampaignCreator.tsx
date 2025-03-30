@@ -21,9 +21,11 @@ import {
   Check,
   Target,
   Settings,
-  Cog
+  Cog,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { Tooltip } from '../ui/Tooltip';
 
 // Define the types for our targeting options - similar to ExploreDatabase
 interface TargetingState {
@@ -31,6 +33,7 @@ interface TargetingState {
   medicationCategory: string;
   medications: string[];
   excludedMedications: string[]; // Medications to explicitly exclude
+  targetMedicationId: string; // Target medication for script lift tracking
   specialties: string[];
   regions: string[];
   prescribingVolume: 'all' | 'high' | 'medium' | 'low';
@@ -58,6 +61,7 @@ const initialTargetingState: TargetingState = {
   medicationCategory: '',
   medications: [],
   excludedMedications: [],
+  targetMedicationId: '',
   specialties: [],
   regions: [],
   prescribingVolume: 'all',
@@ -87,6 +91,9 @@ export function CampaignCreator(): JSX.Element {
   
   // Popup State
   const [showMatchingPopup, setShowMatchingPopup] = useState<boolean>(false);
+  
+  // Search State for target medication
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Data State
   const [availableMedicationCategories, setAvailableMedicationCategories] = useState<string[]>([]);
@@ -300,6 +307,7 @@ export function CampaignCreator(): JSX.Element {
           setError('Please select a medication category or specific medications');
           return false;
         }
+        // Target medication validation removed - will be set in step 5
         break;
       
       case 2:
@@ -318,6 +326,14 @@ export function CampaignCreator(): JSX.Element {
         }
         if (!targeting.medicationCategory && targeting.medications.length === 0) {
           setError('Please select a medication category or specific medications');
+          return false;
+        }
+        break;
+
+      case 5:
+        // Script lift analysis configuration validation
+        if (!targeting.targetMedicationId) {
+          setError('Please select a target medication for script lift analysis');
           return false;
         }
         break;
@@ -455,11 +471,6 @@ export function CampaignCreator(): JSX.Element {
       setIsLoading(true);
       setError(null);
       
-      // Find a medication in the selected category to use as target
-      const targetMedication = targeting.medications.length > 0 
-        ? availableMedications.find(med => med.id === targeting.medications[0])
-        : availableMedications.find(med => med.category === targeting.medicationCategory);
-      
       // Find specialty to use as target
       const targetSpecialty = targeting.specialties.length > 0
         ? availableSpecialties.find(spec => spec.id === targeting.specialties[0])?.name
@@ -473,18 +484,14 @@ export function CampaignCreator(): JSX.Element {
       // Create the campaign object with all required targeting
       const campaignData: any = {
         name: targeting.name,
-        status: 'draft',
+        status: 'in_progress',
         created_at: new Date().toISOString(),
         created_by: user.id,
         targeting_logic: 'and',
         start_date: targeting.startDate,
-        end_date: targeting.endDate
+        end_date: targeting.endDate,
+        target_medication_id: targeting.targetMedicationId // Use the explicitly selected target medication
       };
-      
-      // Add targeting fields if available
-      if (targetMedication?.id) {
-        campaignData.target_medication_id = targetMedication.id;
-      }
       
       if (targetSpecialty) {
         campaignData.target_specialty = targetSpecialty;
@@ -666,6 +673,65 @@ export function CampaignCreator(): JSX.Element {
                 
                 {/* Removed identity matching complete message as requested */}
               </div>
+
+              {/* Target Medication Selector Section */}
+              <div className="mt-8 bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  <Pill className="inline-block mr-2 text-primary-500" size={20} />
+                  Script Lift Analysis Configuration
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                      Target Medication for Analysis <span className="text-error-600">*</span>
+                      <Tooltip 
+                        content="Select the specific medication whose performance you want to track in script lift analysis. This is required for campaign creation."
+                        position="top"
+                        className="ml-1"
+                      />
+                    </label>
+                    <div>
+                      {/* Add search input with medication selection */}
+                      <div className="space-y-2">
+                        <div className="relative w-full max-w-lg">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-gray-400" />
+                          </div>
+                          <Input
+                            type="text"
+                            placeholder="Search medications..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 w-full"
+                          />
+                        </div>
+                        
+                        <Select
+                          options={[
+                            { value: '', label: 'Select a medication' },
+                            ...availableMedications
+                              .filter(med => searchQuery === '' || 
+                                med.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                (med.category && med.category.toLowerCase().includes(searchQuery.toLowerCase()))
+                              )
+                              .map(med => ({ 
+                                value: med.id, 
+                                label: `${med.name}${med.category ? ` (${med.category})` : ''}`
+                              }))
+                          ]}
+                          value={targeting.targetMedicationId}
+                          onChange={(val) => updateTargeting('targetMedicationId', val)}
+                          className="w-full max-w-lg"
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        This medication will be the focus of script lift tracking and analysis.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -685,8 +751,13 @@ export function CampaignCreator(): JSX.Element {
             
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Campaign Name <span className="text-error-600">*</span>
+                  <Tooltip 
+                    content="Enter a unique, descriptive name that identifies this campaign's purpose and target audience."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <Input
                   type="text"
@@ -700,8 +771,13 @@ export function CampaignCreator(): JSX.Element {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                     Start Date <span className="text-error-600">*</span>
+                    <Tooltip 
+                      content="Select the date when this campaign should begin. This affects reporting periods and data analysis."
+                      position="top"
+                      className="ml-1"
+                    />
                   </label>
                   <Input
                     type="date"
@@ -712,8 +788,13 @@ export function CampaignCreator(): JSX.Element {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                     End Date <span className="text-error-600">*</span>
+                    <Tooltip 
+                      content="Select the date when this campaign will end. Campaign duration affects potential impact metrics."
+                      position="top"
+                      className="ml-1"
+                    />
                   </label>
                   <Input
                     type="date"
@@ -734,8 +815,13 @@ export function CampaignCreator(): JSX.Element {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Medication Category
+                  <Tooltip 
+                    content="Select a therapeutic category (e.g., Cardiovascular, Gastrointestinal) to target all providers who prescribe any medication within that class. This creates a broader audience than selecting specific medications."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <Select
                   options={[
@@ -751,8 +837,13 @@ export function CampaignCreator(): JSX.Element {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Specific Medications to Include (Optional)
+                  <Tooltip 
+                    content="Narrow your targeting to providers who prescribe these specific medications. This creates a more focused audience than selecting just a category. Choose multiple medications to target providers who prescribe any of the selected products."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <MultiSelect
                   options={filteredMedications.map(med => ({ value: med.id, label: med.name }))}
@@ -764,8 +855,13 @@ export function CampaignCreator(): JSX.Element {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Specific Medications to Exclude (Optional)
+                  <Tooltip 
+                    content="Exclude providers who prescribe these specific medications. This is valuable for targeting providers who prescribe in a category but NOT your competitors' products, or for eliminating providers who already prescribe your product when looking for new business."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <MultiSelect
                   options={filteredMedications.map(med => ({ value: med.id, label: med.name }))}
@@ -793,8 +889,13 @@ export function CampaignCreator(): JSX.Element {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Provider Specialties
+                  <Tooltip 
+                    content="Target providers by their medical specialty to focus your campaign on the most relevant physicians for your medication. Select multiple specialties to expand your reach across different practice areas."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <MultiSelect
                   options={availableSpecialties.map(specialty => ({ value: specialty.id, label: specialty.name }))}
@@ -805,8 +906,13 @@ export function CampaignCreator(): JSX.Element {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Prescribing Volume
+                  <Tooltip 
+                    content="Filter providers by how frequently they prescribe medications. High volume prescribers reach more patients but may be targeted by many campaigns. Low and medium volume prescribers may present untapped opportunities with less competition."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <div className="flex space-x-2">
                   {['all', 'high', 'medium', 'low'].map(volume => (
@@ -840,8 +946,13 @@ export function CampaignCreator(): JSX.Element {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Target Regions
+                  <Tooltip 
+                    content="Select the specific geographic regions where your campaign will run. This helps focus your marketing efforts on areas with the highest potential impact based on demographic data and prescribing patterns."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <MultiSelect
                   options={availableRegions.map(region => ({ 
@@ -855,8 +966,13 @@ export function CampaignCreator(): JSX.Element {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                   Analysis Timeframe
+                  <Tooltip 
+                    content="Select the historical time period to analyze prescribing patterns. Shorter timeframes (last month) show recent trends, while longer timeframes (last year) reveal established patterns and seasonality effects."
+                    position="top"
+                    className="ml-1"
+                  />
                 </label>
                 <div className="flex space-x-2">
                   {[
@@ -919,7 +1035,6 @@ export function CampaignCreator(): JSX.Element {
                       {targeting.medicationCategory || 'Any'}
                     </span>
                   </div>
-                  
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Included Medications:</span>
                     <span className="font-medium text-gray-900">
@@ -983,11 +1098,12 @@ export function CampaignCreator(): JSX.Element {
                   </div>
                 </div>
               </div>
-              
-              {/* Blue info box removed as requested */}
             </div>
           </div>
         );
+      
+      case 5:
+        return renderIdentityMatching();
       
       default:
         return null;
@@ -1019,31 +1135,6 @@ export function CampaignCreator(): JSX.Element {
                   />
                 ))}
               </div>
-              
-              {/* Network connection lines */}
-              <svg className="absolute inset-0 w-full h-full">
-                <defs>
-                  <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#4338ca" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.3" />
-                  </linearGradient>
-                </defs>
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <line
-                    key={i}
-                    x1={`${Math.random() * 100}%`}
-                    y1={`${Math.random() * 100}%`}
-                    x2={`${Math.random() * 100}%`}
-                    y2={`${Math.random() * 100}%`}
-                    stroke="url(#line-gradient)"
-                    strokeWidth="1"
-                    style={{
-                      animation: `pulse ${Math.random() * 4 + 3}s ease-in-out infinite`,
-                      animationDelay: `${Math.random() * 2}s`
-                    }}
-                  />
-                ))}
-              </svg>
             </div>
             
             <div className="relative z-10">
@@ -1055,34 +1146,21 @@ export function CampaignCreator(): JSX.Element {
               <div className="relative mb-8 rounded-lg p-8 bg-opacity-10 bg-white border border-blue-500 border-opacity-20 backdrop-blur-sm" 
                    style={{ boxShadow: '0 0 30px rgba(59, 130, 246, 0.2)' }}>
                 
-                {/* Horizontal row of gears that spans full width */}
+                {/* Gear animations */}
                 <div className="flex items-center justify-between h-48 relative w-full">
-                  {/* First gear */}
                   <Cog className="h-32 w-32 animate-spin" 
                     style={{ 
                       animationDuration: '7s', 
-                      color: '#ffd700', /* Gold */
+                      color: '#ffd700',
                       filter: 'drop-shadow(0 0 4px rgba(255, 215, 0, 0.8)) brightness(1.2) contrast(1.2)',
                       zIndex: 3,
                       transform: 'translateZ(0)'
                     }} />
                   
-                  {/* Second gear - spins opposite direction */}
-                  <Cog className="h-40 w-40 animate-spin" 
-                    style={{ 
-                      animationDuration: '8s',
-                      animationDirection: 'reverse',
-                      color: '#c0c0c0', /* Silver */
-                      filter: 'drop-shadow(0 0 5px rgba(192, 192, 192, 0.8)) brightness(1.5) contrast(1.1)',
-                      zIndex: 2,
-                      transform: 'translateZ(0)'
-                    }} />
-                  
-                  {/* Central large settings gear */}
                   <Settings className="h-48 w-48 animate-spin" 
                     style={{ 
                       animationDuration: '6s',
-                      background: 'linear-gradient(135deg, #ffd700, #f5bc00)', /* Gold gradient */
+                      background: 'linear-gradient(135deg, #ffd700, #f5bc00)',
                       borderRadius: '50%',
                       color: 'transparent',
                       WebkitBackgroundClip: 'text',
@@ -1091,25 +1169,10 @@ export function CampaignCreator(): JSX.Element {
                       transform: 'translateZ(0)'
                     }} />
                   
-                  {/* Fourth gear - spins opposite direction */}
-                  <Cog className="h-36 w-36 animate-spin" 
-                    style={{ 
-                      animationDuration: '7.5s',
-                      animationDirection: 'reverse',
-                      background: 'linear-gradient(135deg, #c0c0c0, #e8e8e8)', /* Silver gradient */
-                      borderRadius: '50%',
-                      color: 'transparent',
-                      WebkitBackgroundClip: 'text',
-                      filter: 'drop-shadow(0 0 6px rgba(192, 192, 192, 0.8))',
-                      zIndex: 1,
-                      transform: 'translateZ(0)'
-                    }} />
-                  
-                  {/* Fifth gear */}
-                  <Cog className="h-30 w-30 animate-spin" 
+                  <Cog className="h-32 w-32 animate-spin" 
                     style={{ 
                       animationDuration: '6.5s',
-                      color: '#FFD700', /* Gold */
+                      color: '#FFD700',
                       filter: 'drop-shadow(0 0 4px rgba(255, 215, 0, 0.8)) brightness(1.4)',
                       zIndex: 3,
                       transform: 'translateZ(0)'
@@ -1141,21 +1204,6 @@ export function CampaignCreator(): JSX.Element {
                 )}
               </div>
             </div>
-            
-            {/* Add keyframe animations */}
-            <style>
-              {`
-                @keyframes pulse {
-                  0%, 100% { opacity: 0.2; }
-                  50% { opacity: 0.8; }
-                }
-                @keyframes float {
-                  0% { transform: translateY(0px); }
-                  50% { transform: translateY(-20px); }
-                  100% { transform: translateY(0px); }
-                }
-              `}
-            </style>
           </div>
         </div>
       )}
@@ -1217,8 +1265,8 @@ export function CampaignCreator(): JSX.Element {
           {/* Display provider counts */}
           {renderProviderCounts()}
           
-          {/* Display identity matching when in that step */}
-          {currentStep === 5 ? renderIdentityMatching() : renderCurrentStep()}
+          {/* Display current step content */}
+          {renderCurrentStep()}
           
           <div className="mt-8 flex justify-between">
             <Button

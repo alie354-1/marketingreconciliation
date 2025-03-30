@@ -13,6 +13,7 @@ export interface PrescriptionData {
   provider_id: string;
   provider_specialty: string;
   provider_region: string;
+  provider_geographic_area?: string; // Alternative field name in some database schemas
   
   // Prescription counts
   baseline_count: number; // Count before campaign
@@ -36,6 +37,7 @@ export type PrescriptionGroupBy =
   | 'medication' 
   | 'provider_specialty' 
   | 'provider_region'
+  | 'provider_geographic_area'  // Added this as an alternative field name
   | 'medication_category';
 
 // Prescription summary after grouping
@@ -47,6 +49,14 @@ export interface PrescriptionSummary {
   change_count: number;
   change_percentage: number;
   records_count: number; // How many records were aggregated
+}
+
+/**
+ * Timeframe for analyzing prescription data
+ */
+export interface PrescriptionTimeframe {
+  daysBefore: number;  // Number of days before campaign start
+  daysAfter: number;   // Number of days after campaign start
 }
 
 /**
@@ -62,4 +72,5 @@ export interface PrescriptionGenerationConfig {
   providerCount: number;
   targetLiftPercentage: number; // Expected lift for target medication
   competitorDeclinePercentage: number; // Expected decline for competitors
+  timeframe?: PrescriptionTimeframe; // Optional custom timeframe
 }

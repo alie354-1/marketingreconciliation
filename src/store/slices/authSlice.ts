@@ -2,6 +2,39 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { User } from '../../types';
 import { supabase, getSupabaseErrorDetails } from '../../lib/supabase';
 
+// Function to copy sample data for a new user
+const copySampleData = async (userId: string) => {
+  try {
+    // First check if user already has campaigns
+    const { data: existingCampaigns } = await supabase
+      .from('campaigns')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1);
+    
+    // Only copy sample data if user has no campaigns
+    if (!existingCampaigns || existingCampaigns.length === 0) {
+      console.log('New user detected, copying sample data');
+      
+      // Call our RPC function to copy sample data
+      const { data, error } = await supabase.rpc(
+        'copy_sample_data_for_new_user', 
+        { user_id: userId }
+      );
+      
+      if (error) {
+        console.error('Error copying sample data:', error);
+      } else {
+        console.log('Successfully copied sample data for new user');
+      }
+    } else {
+      console.log('User already has campaigns, not copying sample data');
+    }
+  } catch (error) {
+    console.error('Error in sample data copy process:', error);
+  }
+};
+
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -37,6 +70,10 @@ export const signIn = createAsyncThunk(
       }
 
       console.log('Sign-in successful:', data.user.id);
+      
+      // Copy sample data for the user if they don't have any campaigns yet
+      await copySampleData(data.user.id);
+      
       return {
         id: data.user.id,
         email: data.user.email || '',
@@ -86,6 +123,10 @@ export const signUp = createAsyncThunk(
       }
 
       console.log('Sign-up successful:', data.user.id);
+      
+      // Copy sample data for new users on signup
+      await copySampleData(data.user.id);
+      
       return {
         id: data.user.id,
         email: data.user.email || '',
@@ -122,10 +163,17 @@ export const getCurrentUser = createAsyncThunk(
         return rejectWithValue(error.message);
       }
 
-      return data.user ? {
-        id: data.user.id,
-        email: data.user.email || '',
-      } as User : null;
+      if (data.user) {
+        // Also check for sample data when resuming session
+        await copySampleData(data.user.id);
+        
+        return {
+          id: data.user.id,
+          email: data.user.email || '',
+        } as User;
+      }
+      
+      return null;
     } catch (error) {
       return rejectWithValue('Failed to get current user.');
     }

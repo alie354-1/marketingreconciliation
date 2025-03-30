@@ -85,7 +85,7 @@ export interface Campaign {
   target_geographic_area?: string;
   target_specialty?: string;
   // creative_content has been removed from database
-  status: 'draft' | 'pending' | 'active' | 'completed' | 'paused';
+  status: 'draft' | 'in_progress' | 'pending' | 'active' | 'completed' | 'paused';
   targeting_logic?: 'and' | 'or';
   targeting_metadata?: {
     excluded_medications?: string[];

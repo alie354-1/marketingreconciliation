@@ -24,6 +24,7 @@ import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Legend } from 'recharts';
 import { ScriptLiftComparison } from './ScriptLiftComparison';
+import { ScriptLiftBaseSelector } from './ScriptLiftBaseSelector';
 
 // Sample data for charts
 const DUMMY_HISTORICAL_DATA = [
@@ -195,13 +196,7 @@ export function CampaignResults() {
             Back to Campaigns
           </Link>
           
-          <Link
-            to={`/campaigns/${id}/script-lift`}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-          >
-            <Calculator className="h-4 w-4 mr-2" />
-            Script Lift Configurator
-          </Link>
+          {/* Script Lift Configurator removed - now integrated into campaign creation process */}
         </div>
 
       <div className="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -687,6 +682,12 @@ export function CampaignResults() {
                   icon={<Globe className="h-5 w-5 text-primary-500" />}
                 />
               </div>
+              
+              {/* Script Lift Base Selector */}
+              <ScriptLiftBaseSelector 
+                campaignId={id || ''} 
+                campaignName={campaign.name}
+              />
               
               {/* Script Lift Comparison Component */}
               <ScriptLiftComparison campaignId={id} />

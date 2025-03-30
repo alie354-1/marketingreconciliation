@@ -20,10 +20,11 @@ export interface CampaignCardProps {
     roi?: string | number;
     providerReach?: number;
   };
-  status: 'active' | 'draft' | 'ended' | 'paused';
+  status: 'active' | 'draft' | 'in_progress' | 'ended' | 'paused' | 'completed' | 'pending';
   startDate?: string;
   endDate?: string;
   className?: string;
+  onAnalyzeClick?: (id: string) => void;
 }
 
 export function CampaignCard({
@@ -35,6 +36,7 @@ export function CampaignCard({
   startDate,
   endDate,
   className,
+  onAnalyzeClick,
 }: CampaignCardProps) {
   const formattedStartDate = startDate ? new Date(startDate).toLocaleDateString() : 'Not started';
   const formattedEndDate = endDate ? new Date(endDate).toLocaleDateString() : 'Ongoing';
@@ -43,8 +45,11 @@ export function CampaignCard({
   const statusColor = {
     active: 'border-l-success-500',
     draft: 'border-l-gray-400',
+    in_progress: 'border-l-amber-500',
     ended: 'border-l-gray-500',
     paused: 'border-l-warning-500',
+    completed: 'border-l-gray-500',
+    pending: 'border-l-blue-400',
   };
   
   // Format numbers with commas
@@ -77,11 +82,12 @@ export function CampaignCard({
               "px-2.5 py-1 text-xs font-medium rounded-full capitalize",
               status === 'active' ? "bg-success-100 text-success-700" :
               status === 'draft' ? "bg-gray-100 text-gray-700" :
+              status === 'in_progress' ? "bg-amber-100 text-amber-700" :
               status === 'paused' ? "bg-warning-100 text-warning-700" :
               "bg-gray-200 text-gray-800"
             )}
           >
-            {status}
+            {status === 'in_progress' ? 'in progress' : status}
           </span>
         </div>
         <div className="mt-1 text-sm text-gray-500">
@@ -185,14 +191,25 @@ export function CampaignCard({
         </div>
       </div>
       
-      {/* Footer with link */}
-      <div className="p-4 border-t border-gray-100 bg-gray-50">
+      {/* Footer with links */}
+      <div className="p-3 sm:p-4 border-t border-gray-100 bg-gray-50 flex flex-wrap justify-between gap-2">
+        {onAnalyzeClick && (
+          <button
+            onClick={() => onAnalyzeClick(id)}
+            className="flex items-center text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-700 group min-w-[7rem]"
+          >
+            <span className="sm:hidden">Analyze</span>
+            <span className="hidden sm:inline">Analyze Medications</span>
+            <ArrowUpRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-200 group-hover:translate-y-[-2px] group-hover:translate-x-[2px]" />
+          </button>
+        )}
         <Link 
           to={`/campaigns/${id}`}
-          className="flex items-center justify-end text-sm font-medium text-primary-600 hover:text-primary-700 group"
+          className="flex items-center text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-700 group"
         >
-          View Campaign Details
-          <ArrowRight className="ml-1 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+          <span className="sm:hidden">Details</span>
+          <span className="hidden sm:inline">View Details</span>
+          <ArrowRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-200 group-hover:translate-x-1" />
         </Link>
       </div>
     </div>
