@@ -44,7 +44,7 @@ export interface ScriptLiftPreferences {
   };
   selectedMedicationIds?: string[];
   comparisonMedicationId?: string | null;
-  marketShareView?: 'charts' | 'table'; 
+  marketShareView?: 'charts' | 'table';
 }
 
 // Complete script lift configuration for a campaign
