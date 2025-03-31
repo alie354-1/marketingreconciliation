@@ -47,7 +47,25 @@ However, these migrations require direct database access to run. The `apply_miss
 
 ## Running the Database Fix
 
-To apply the database fix, you need to:
+We've provided multiple options to apply the database fix:
+
+### Option 1: Using the Interactive Script
+
+Run the interactive script that will guide you through the process:
+
+```bash
+./run_fix_missing_columns.sh
+```
+
+This script will:
+1. Check if the Supabase CLI is installed
+2. Prompt you for your Supabase project reference and database password
+3. Link to your Supabase project
+4. Run the SQL script to add the missing columns
+
+### Option 2: Using the Original Script (Requires DATABASE_URL)
+
+If you prefer to use the original script, you need to:
 
 1. Set the `DATABASE_URL` environment variable to your Supabase database URL
 2. Run the `apply_missing_columns_fix.sh` script
@@ -57,12 +75,14 @@ export DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF]
 ./apply_missing_columns_fix.sh
 ```
 
-Alternatively, you can run the migrations directly using the Supabase CLI:
+### Option 3: Manual SQL Execution
 
-```bash
-npx supabase link --project-ref [YOUR-PROJECT-REF] --password [YOUR-DB-PASSWORD]
-npx supabase migration up
-```
+You can also run the SQL script directly in the Supabase SQL Editor:
+
+1. Log in to your Supabase dashboard
+2. Navigate to the SQL Editor
+3. Copy the contents of `fix_missing_columns.sql`
+4. Paste into the SQL Editor and run
 
 ## Current Status
 
