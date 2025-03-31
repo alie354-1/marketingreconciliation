@@ -14,16 +14,25 @@ if [ ! -f "package.json" ]; then
   exit 1
 fi
 
-# Run the migration
-echo "Running migration to add missing columns..."
-npx supabase migration up --db-url $DATABASE_URL
+# Run the migrations
+echo "Running migrations to add missing columns and fix campaign results..."
+echo "1. Running migration 20250330990000_add_missing_columns_for_campaign_results.sql"
+npx supabase migration up 20250330990000_add_missing_columns_for_campaign_results.sql --db-url $DATABASE_URL
 
 if [ $? -ne 0 ]; then
-  echo "Error: Failed to run migration. Please check your database connection."
+  echo "Error: Failed to run first migration. Please check your database connection."
   exit 1
 fi
 
-echo "Migration completed successfully."
+echo "2. Running migration 20250330995000_fix_campaign_results_expansion.sql"
+npx supabase migration up 20250330995000_fix_campaign_results_expansion.sql --db-url $DATABASE_URL
+
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to run second migration. Please check your database connection."
+  exit 1
+fi
+
+echo "Migrations completed successfully."
 
 # Restart the development server if it's running
 if pgrep -f "vite" > /dev/null; then
@@ -39,4 +48,5 @@ fi
 
 echo "Fix applied successfully!"
 echo "You should now be able to access the ExploreDatabase component and Campaign Results without errors."
+echo "The campaign results expansion should now display data properly when clicking on 'Full Results'."
 echo "Note: Adding more medications will now increase the provider count rather than decrease it."

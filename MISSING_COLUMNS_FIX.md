@@ -19,6 +19,11 @@ This document outlines the fixes implemented to address the database schema mism
    - Added sample data to populate the campaign results for testing
    - Created the `script_lift_data` table needed by the ScriptLiftComparison component
 
+4. **Campaign Results Expansion Blank**
+   - Fixed the issue where clicking "Full Results" in the campaign card showed a blank screen
+   - Added more comprehensive historical data to the campaign_results table in migration `20250330995000_fix_campaign_results_expansion.sql`
+   - Ensured the script_lift_data table has data for each campaign
+
 ## Provider Count Improvements
 
 We've also improved how provider counts are calculated when multiple medications are selected:
